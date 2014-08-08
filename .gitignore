@@ -1,0 +1,12 @@
+.idea/*
+*.sqlite3
+*.pyc
+.codeintel/*
+*.log
+sphinx*.*
+.directory
+fab_*
+venv
+.DS_Store
+Thumbs.db
+.coverage

@@ -1,0 +1,2 @@
+class CDEKConfigurationError(Exception):
+    pass
