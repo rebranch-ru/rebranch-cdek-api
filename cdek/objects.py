@@ -2,8 +2,21 @@
 from xml.etree.ElementTree import Element, SubElement, tostring
 
 
+class XMLAttribute(object):
+    name = None
+    required = None
+
+    def __init__(self, name, required):
+        self.name = name
+        self.required = required
+
+
 class XMLableObject(object):
-    serializeable_attributes = ()
+    xml_attributes = ()
+
+    @property
+    def attributes(self):
+        return [x.name for x in self.xml_attributes]
 
     def _to_pascal_case(self, attribute_name):
         attribute_name = u''.join([x.capitalize() for x in attribute_name.split(u'_')])
@@ -11,7 +24,7 @@ class XMLableObject(object):
 
     def to_xml_element(self, tag_name, parent=None):
         element = Element(tag_name) if parent is None else SubElement(parent=parent, tag=tag_name)
-        for attribute_name in self.serializeable_attributes:
+        for attribute_name in self.attributes:
             attribute = getattr(self, attribute_name)
             if attribute is None:
                 pass
@@ -20,153 +33,156 @@ class XMLableObject(object):
                 element.set(self._to_pascal_case(attribute_name), attribute)
             elif isinstance(attribute, (tuple, list)):
                 for subattribute in attribute:
-                    subattribute.to_xml_element(parent=element, tag_name=self._to_pascal_case(attribute_name))
+                    if isinstance(subattribute, XMLableObject):
+                        subattribute.to_xml_element(parent=element, tag_name=self._to_pascal_case(attribute_name))
+                    else:
+                        subattribute = unicode(subattribute)
+                        element.set(self._to_pascal_case(attribute_name), subattribute)
             elif isinstance(attribute, XMLableObject):
                 attribute.to_xml_element(parent=element, tag_name=self._to_pascal_case(attribute_name))
         return element
 
+    def __init__(self, **kwargs):
+        for xml_attribute in self.xml_attributes:
+            if xml_attribute.required and not xml_attribute.name in kwargs.keys():
+                raise TypeError(u'"{}" keyword argument required!'.format(xml_attribute.name))
+            elif xml_attribute.name in kwargs.keys():
+                setattr(self, xml_attribute.name, kwargs[xml_attribute.name])
+        for key in kwargs.keys():
+            if not key in self.attributes:
+                raise AssertionError(u'Wrong keyword argument "{}"!'.format(key))
+
 
 class CDEKPassport(XMLableObject):
-    serializeable_attributes = (u'series', u'number')
-
-    def __init__(self, series, number):
-        self.series = series
-        self.number = number
+    xml_attributes = (
+        XMLAttribute(u'series', True),
+        XMLAttribute(u'number', True)
+    )
 
 
 class CDEKAddress(XMLableObject):
-    serializeable_attributes = (
-        u'street',
-        u'house',
-        u'flat',
-        u'pvz_code'
+    xml_attributes = (
+        XMLAttribute(u'street', True),
+        XMLAttribute(u'house', True),
+        XMLAttribute(u'flat', True),
+        XMLAttribute(u'pvz_code', False)
     )
-
-    def __init__(self, street, house, flat, pvz_code=None):
-        self.street = street
-        self.house = house
-        self.flat = flat
-        self.pvz_code = pvz_code
 
 
 class CDEKItem(XMLableObject):
-    serializeable_attributes = (
-        u'ware_key',
-        u'cost_ex',
-        u'cost',
-        u'payment_ex',
-        u'payment',
-        u'weight',
-        u'weight_brutto',
-        u'amount',
-        u'comment_ex',
-        u'link',
-        u'comment'
+    xml_attributes = (
+        XMLAttribute(u'ware_key', True),
+        XMLAttribute(u'cost', True),
+        XMLAttribute(u'payment', True),
+        XMLAttribute(u'weight', True),
+        XMLAttribute(u'weight_brutto', True),
+        XMLAttribute(u'amount', True),
+        XMLAttribute(u'link', True),
+        XMLAttribute(u'comment', False)
     )
-
-    def __init__(self, ware_key, cost_ex, cost, payment_ex, payment, weight, weight_brutto, amount, comment_ex, link,
-                 comment=None):
-        self.ware_key = ware_key
-        self.cost_ex = cost_ex
-        self.cost = cost
-        self.payment_ex = payment_ex
-        self.payment = payment
-        self.weight = weight
-        self.weight_brutto = weight_brutto
-        self.amount = amount
-        self.comment_ex = comment_ex
-        self.link = link
-        self.comment = comment
 
 
 class CDEKPackage(XMLableObject):
-    serializeable_attributes = (
-        'number',
-        'bar_code',
-        'weight',
-        'item',
-        'size_a',
-        'size_b',
-        'size_c'
+    xml_attributes = (
+        XMLAttribute('number', True),
+        XMLAttribute('bar_code', True),
+        XMLAttribute('weight', True),
+        XMLAttribute('item', True),
+        XMLAttribute('size_a', False),
+        XMLAttribute('size_b', False),
+        XMLAttribute('size_c', False)
     )
-
-    def __init__(self, number, bar_code, weight, items, size_a=None, size_b=None, size_c=None):
-        self.number = number
-        self.bar_code = bar_code
-        self.weight = weight
-        self.size_a = size_a
-        self.size_b = size_b
-        self.size_c = size_c
-        self.item = items
 
 
 class CDEKOrder(XMLableObject):
-    serializeable_attributes = (
-        u'number',
-        u'date_invoice',
-        u'recipient_name',
-        u'recipient_email',
-        u'phone',
-        u'tariff_type_code',
-        u'seller_name',
-        u'seller_address',
-        u'shipper_name',
-        u'shipper_address',
-        u'address',
-        u'package',
-        u'send_city_code',
-        u'rec_city_code',
-        u'send_city_post_code',
-        u'rec_city_post_code',
-        u'passport',
-        u'comment'
+    xml_attributes = (
+        XMLAttribute(u'number', True),
+        XMLAttribute(u'date_invoice', True),
+        XMLAttribute(u'recipient_name', True),
+        XMLAttribute(u'recipient_email', True),
+        XMLAttribute(u'phone', True),
+        XMLAttribute(u'tariff_type_code', True),
+        XMLAttribute(u'seller_name', True),
+        XMLAttribute(u'address', True),
+        XMLAttribute(u'package', True),
+        XMLAttribute(u'send_city_code', False),
+        XMLAttribute(u'rec_city_code', False),
+        XMLAttribute(u'passport', True),
+        XMLAttribute(u'send_city_post_code', False),
+        XMLAttribute(u'rec_city_post_code', False),
+        XMLAttribute(u'call_courier', False),
+        XMLAttribute(u'comment', False),
+        XMLAttribute(u'add_service', False),
+        XMLAttribute(u'delivery_recipient_cost', False)
     )
-
-    def __init__(self, number, date_invoice, recipient_name, recipient_email, phone, tariff_type_code,
-                 seller_name, seller_address, shipper_name, shipper_address, address, packages, send_city_code=None,
-                 rec_city_code=None, send_city_post_code=None, rec_city_post_code=None, passport_series=None,
-                 passport_number=None, comment=None):
-        self.number = number
-        self.date_invoice = date_invoice
-        self.send_city_code = send_city_code
-        self.rec_city_code = rec_city_code
-        self.send_city_post_code = send_city_post_code
-        self.rec_city_post_code = rec_city_post_code
-        self.tariff_type_code = tariff_type_code
-        self.seller_name = seller_name
-        self.seller_address = seller_address
-        self.shipper_name = shipper_name
-        self.shipper_address = shipper_address
-        self.address = address
-        self.comment = comment
-        self.passport = CDEKPassport(series=passport_series, number=passport_number)
-        self.recipient_email = recipient_email
-        self.phone = phone
-        self.recipient_name = recipient_name
-        self.package = packages
 
 
 class CDEKDeliveryRequest(XMLableObject):
-    serializeable_attributes = (
-        u'order',
-        u'foreign_delivery',
-        u'number',
-        u'date',
-        u'currency',
-        u'account',
-        u'secure',
-        u'order_count'
+    xml_attributes = (
+        XMLAttribute(u'order', True),
+        XMLAttribute(u'number', True),
+        XMLAttribute(u'date', True),
+        XMLAttribute(u'account', True),
+        XMLAttribute(u'secure', True),
+        XMLAttribute(u'order_count', True),
     )
 
-    def __init__(self, orders, foreign_delivery, number, date, currency, account, secure, order_count):
-        self.order = orders
-        self.foreign_delivery = foreign_delivery
-        self.number = number
-        self.date = date
-        self.currency = currency
-        self.account = account
-        self.secure = secure
-        self.order_count = order_count
+
+class CallCourier(XMLableObject):
+    xml_attributes = (
+        XMLAttribute(u'call', True),
+        XMLAttribute(u'send_address', True),
+    )
+
+
+class CDEKCall(XMLableObject):
+    xml_attributes = (
+        XMLAttribute(u'date', True),
+        XMLAttribute(u'time_beg', True),
+        XMLAttribute(u'time_end', True),
+        XMLAttribute(u'send_city_code', True),
+        XMLAttribute(u'lunch_beg', False),
+        XMLAttribute(u'lunch_end', False),
+    )
+
+
+class CDEKSendAddress(XMLableObject):
+    xml_attributes = (
+        XMLAttribute(u'street', True),
+        XMLAttribute(u'house', True),
+        XMLAttribute(u'flat', True),
+        XMLAttribute(u'send_phone', True),
+        XMLAttribute(u'sender_name', True),
+        XMLAttribute(u'comment', False),
+    )
+
+
+class CDEKCallCourier(XMLableObject):
+    xml_attributes = (
+        XMLAttribute(u'call', True),
+        XMLAttribute(u'send_address', True),
+    )
+
+
+class CDEKAddService(XMLableObject):
+    class SERVICE_CODES(object):
+        FITTING_AT_HOME = 30  #Курьер доставляет покупателю несколько единиц товара (одежда, обувь и пр.) для примерки.
+        # Время ожидания курьера в этом случае составляет 30 минут.
+        PARTLY_DELIVERY = 36  #Во время доставки товара покупатель может отказаться от одной или нескольких позиций, и
+        # выкупить только часть заказа
+        ITEMS_INSPECTION = 37  #Проверка покупателем содержимого заказа до его оплаты (вскрытие посылки).
+        DELIVERY_IN_HOLIDAYS = 3  #Осуществление доставки заказа в выходные и нерабочие дни.
+        WITHDRAWAL_IN_SENDER_CITY = 16  #Дополнительная услуга забора груза в городе отправителя, при условии что тариф
+        # доставки с режимом «от склада»
+        DELIVERY_IN_RECIPIENT_CITY = 17  #Дополнительная услуга доставки груза в городе получателя, при условии что
+        # тариф доставки с режимом «до склада» (только для тарифов «Магистральный», «Магистральный супер-экспресс»)
+        INSURANCE = 2  #Обеспечение страховой защиты посылки. Размер дополнительного сбора страхования вычисляется от
+        # размера объявленной стоимости отправления. Важно: Услуга начисляется автоматически для всех заказов ИМ, не
+        # разрешена для самостоятельной передачи в тэге AddService.
+
+    xml_attributes = (
+        XMLAttribute(u'service_code', True),
+    )
 
 
 class ApiResponseError(object):

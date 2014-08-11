@@ -8,17 +8,19 @@ from unittest import TestCase
 
 from cdek.exceptions import CDEKConfigurationError
 from cdek.api import CDEKAPI
+from cdek.factory import CDEKObjectFactory
 from cdek.objects import CDEKItem, CDEKAddress, CDEKPackage, CDEKOrder, ApiResponse
 
 
 class BaseTestCase(TestCase):
     def setUp(self):
+        self.factory = CDEKObjectFactory(account=os.getenv(u'CDEK_ACCOUNT'), password=os.getenv(u'CDEK_PASSWORD'))
         self.api_client = CDEKAPI(account=os.getenv(u'CDEK_ACCOUNT'), password=os.getenv(u'CDEK_PASSWORD'))
 
 
 class TestSerialization(BaseTestCase):
     def test_item_serialization(self):
-        item = self.api_client.factory_item(
+        item = self.factory.factory_item(
             ware_key=uuid.uuid1().get_hex()[:10],
             cost_ex=Decimal(250.0),
             cost=Decimal(250.0 * 30),
@@ -35,7 +37,7 @@ class TestSerialization(BaseTestCase):
         tostring(item.to_xml_element(u'Item'), encoding='UTF-8').replace("'", "\"")
 
     def test_address_serialization(self):
-        address = self.api_client.factory_address(
+        address = self.factory.factory_address(
             street=u'Ленина',
             house=u'34',
             flat=u'97',
@@ -46,7 +48,7 @@ class TestSerialization(BaseTestCase):
 
     def test_package_serialization(self):
         items = [
-            self.api_client.factory_item(
+            self.factory.factory_item(
                 ware_key=uuid.uuid1().get_hex()[:10],
                 cost_ex=Decimal(450.0),
                 cost=Decimal(450.0 * 30),
@@ -59,7 +61,7 @@ class TestSerialization(BaseTestCase):
                 comment=u'Комментарий на русском',
                 link=u'http://shop.ru/item/44'
             ),
-            self.api_client.factory_item(
+            self.factory.factory_item(
                 ware_key=uuid.uuid1().get_hex()[:10],
                 cost_ex=Decimal(250.0),
                 cost=Decimal(250.0 * 30),
@@ -74,7 +76,7 @@ class TestSerialization(BaseTestCase):
             )
         ]
 
-        package = self.api_client.factory_package(
+        package = self.factory.factory_package(
             number=uuid.uuid1().hex[:10],
             weight=3000,
             items=items
@@ -84,7 +86,7 @@ class TestSerialization(BaseTestCase):
 
     def test_order_serialization(self):
         items = [
-            self.api_client.factory_item(
+            self.factory.factory_item(
                 ware_key=uuid.uuid1().get_hex()[:10],
                 cost_ex=Decimal(450.0),
                 cost=Decimal(450.0 * 30),
@@ -97,7 +99,7 @@ class TestSerialization(BaseTestCase):
                 comment=u'Комментарий на русском',
                 link=u'http://shop.ru/item/44'
             ),
-            self.api_client.factory_item(
+            self.factory.factory_item(
                 ware_key=uuid.uuid1().get_hex()[:10],
                 cost_ex=Decimal(250.0),
                 cost=Decimal(250.0 * 30),
@@ -111,18 +113,18 @@ class TestSerialization(BaseTestCase):
                 link=u'http://shop.ru/item/42'
             )
         ]
-        packages = [self.api_client.factory_package(
+        packages = [self.factory.factory_package(
             number=uuid.uuid1().hex[:10],
             weight=3000,
             items=items
         )]
 
-        address = self.api_client.factory_address(
+        address = self.factory.factory_address(
             street=u'Ленина',
             house=u'34',
             flat=u'97'
         )
-        order = self.api_client.factory_order(
+        order = self.factory.factory_order(
             number=uuid.uuid1().hex[:10],
             date_invoice=datetime.datetime.now(),
             recipient_name=u'Петров Виктор Владимирович',
@@ -130,9 +132,6 @@ class TestSerialization(BaseTestCase):
             phone=u'+79876543210',
             tariff_type_code=1,
             seller_name=u'ООО "Магазин"',
-            seller_address=u'Москва, ул. 40 лет Октября, 12-22',
-            shipper_name=u'СДЭК',
-            shipper_address=u'Москва, ул. 90 лет Октября, 12-22',
             address=address,
             packages=packages,
             send_city_post_code=u'123456',
@@ -143,7 +142,7 @@ class TestSerialization(BaseTestCase):
 
     def test_order_factory_without_sender_code(self):
         items = [
-            self.api_client.factory_item(
+            self.factory.factory_item(
                 ware_key=uuid.uuid1().get_hex()[:10],
                 cost_ex=Decimal(450.0),
                 cost=Decimal(450.0 * 30),
@@ -156,7 +155,7 @@ class TestSerialization(BaseTestCase):
                 comment=u'Комментарий на русском',
                 link=u'http://shop.ru/item/44'
             ),
-            self.api_client.factory_item(
+            self.factory.factory_item(
                 ware_key=uuid.uuid1().get_hex()[:10],
                 cost_ex=Decimal(250.0),
                 cost=Decimal(250.0 * 30),
@@ -170,19 +169,19 @@ class TestSerialization(BaseTestCase):
                 link=u'http://shop.ru/item/42'
             )
         ]
-        packages = [self.api_client.factory_package(
+        packages = [self.factory.factory_package(
             number=uuid.uuid1().hex[:10],
             weight=3000,
             items=items
         )]
 
-        address = self.api_client.factory_address(
+        address = self.factory.factory_address(
             street=u'Ленина',
             house=u'34',
             flat=u'97'
         )
         try:
-            self.api_client.factory_order(
+            self.factory.factory_order(
                 number=uuid.uuid1().hex[:10],
                 date_invoice=datetime.datetime.now(),
                 recipient_name=u'Петров Виктор Владимирович',
@@ -190,9 +189,6 @@ class TestSerialization(BaseTestCase):
                 phone=u'+79876543210',
                 tariff_type_code=1,
                 seller_name=u'ООО "Магазин"',
-                seller_address=u'Москва, ул. 40 лет Октября, 12-22',
-                shipper_name=u'СДЭК',
-                shipper_address=u'Москва, ул. 90 лет Октября, 12-22',
                 address=address,
                 packages=packages,
                 rec_city_post_code=u'654321'
@@ -204,7 +200,7 @@ class TestSerialization(BaseTestCase):
 
     def test_delivery_reqesut_serialization(self):
         items = [
-            self.api_client.factory_item(
+            self.factory.factory_item(
                 ware_key=uuid.uuid1().get_hex()[:10],
                 cost_ex=Decimal(450.0),
                 cost=Decimal(450.0 * 30),
@@ -217,7 +213,7 @@ class TestSerialization(BaseTestCase):
                 comment=u'Комментарий на русском',
                 link=u'http://shop.ru/item/44'
             ),
-            self.api_client.factory_item(
+            self.factory.factory_item(
                 ware_key=uuid.uuid1().get_hex()[:10],
                 cost_ex=Decimal(250.0),
                 cost=Decimal(250.0 * 30),
@@ -231,18 +227,18 @@ class TestSerialization(BaseTestCase):
                 link=u'http://shop.ru/item/42'
             )
         ]
-        packages = [self.api_client.factory_package(
+        packages = [self.factory.factory_package(
             number=uuid.uuid1().hex[:10],
             weight=3000,
             items=items
         )]
 
-        address = self.api_client.factory_address(
+        address = self.factory.factory_address(
             street=u'Ленина',
             house=u'34',
             flat=u'97'
         )
-        order = self.api_client.factory_order(
+        order = self.factory.factory_order(
             number=uuid.uuid1().hex[:10],
             date_invoice=datetime.datetime.now(),
             recipient_name=u'Петров Виктор Владимирович',
@@ -250,20 +246,16 @@ class TestSerialization(BaseTestCase):
             phone=u'+79876543210',
             tariff_type_code=1,
             seller_name=u'ООО "Магазин"',
-            seller_address=u'Москва, ул. 40 лет Октября, 12-22',
-            shipper_name=u'СДЭК',
-            shipper_address=u'Москва, ул. 90 лет Октября, 12-22',
             address=address,
             packages=packages,
             send_city_post_code=u'123456',
             rec_city_post_code=u'654321'
         )
-        delivery_request = self.api_client.factory_delivery_request(
+        delivery_request = self.factory.factory_delivery_request(
             orders=[order],
             foreign_delivery=True,
             number=uuid.uuid1().hex[:10],
-            date=datetime.datetime.now(),
-            currency=CDEKAPI.CURRENCIES.RUB
+            date=datetime.datetime.now()
         )
         tostring(delivery_request.to_xml_element(u'DeliveryRequest'))
 
@@ -271,7 +263,7 @@ class TestSerialization(BaseTestCase):
 class TestApi(BaseTestCase):
     def test_delivery_request(self):
         items = [
-            self.api_client.factory_item(
+            self.factory.factory_item(
                 ware_key=uuid.uuid1().get_hex()[:10],
                 cost_ex=Decimal(450.0),
                 cost=Decimal(450.0 * 30),
@@ -284,7 +276,7 @@ class TestApi(BaseTestCase):
                 comment=u'Комментарий на русском',
                 link=u'http://shop.ru/item/44'
             ),
-            self.api_client.factory_item(
+            self.factory.factory_item(
                 ware_key=uuid.uuid1().get_hex()[:10],
                 cost_ex=Decimal(250.0),
                 cost=Decimal(250.0 * 30),
@@ -298,18 +290,18 @@ class TestApi(BaseTestCase):
                 link=u'http://shop.ru/item/42'
             )
         ]
-        packages = [self.api_client.factory_package(
+        packages = [self.factory.factory_package(
             number=uuid.uuid1().hex[:10],
             weight=3000,
             items=items
         )]
 
-        address = self.api_client.factory_address(
+        address = self.factory.factory_address(
             street=u'Ленина',
             house=u'34',
             flat=u'97'
         )
-        order = self.api_client.factory_order(
+        order = self.factory.factory_order(
             number=uuid.uuid1().hex[:10],
             date_invoice=datetime.datetime.now(),
             recipient_name=u'Петров Виктор Владимирович',
@@ -317,9 +309,6 @@ class TestApi(BaseTestCase):
             phone=u'+79876543210',
             tariff_type_code=1,
             seller_name=u'ООО "Магазин"',
-            seller_address=u'Москва, ул. 40 лет Октября, 12-22',
-            shipper_name=u'СДЭК',
-            shipper_address=u'Москва, ул. 90 лет Октября, 12-22',
             address=address,
             packages=packages,
             send_city_post_code=u'111402',
@@ -327,12 +316,11 @@ class TestApi(BaseTestCase):
             passport_number=u'7575',
             passport_series=u'012345'
         )
-        delivery_request = self.api_client.factory_delivery_request(
+        delivery_request = self.factory.factory_delivery_request(
             orders=[order],
             foreign_delivery=True,
             number=uuid.uuid1().hex[:10],
-            date=datetime.datetime.now(),
-            currency=CDEKAPI.CURRENCIES.RUB
+            date=datetime.datetime.now()
         )
         response = self.api_client.make_delivery_request(delivery_request)
         self.assertIsInstance(response, ApiResponse)
