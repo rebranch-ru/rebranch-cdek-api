@@ -1,8 +1,10 @@
 # coding=utf-8
 import hashlib
 
-from cdek.objects import CDEKAddress, CDEKOrder, CDEKItem, CDEKPackage, CDEKDeliveryRequest, CDEKPassport, CDEKCall, \
-    CDEKSendAddress, CDEKCallCourier, CDEKAddService
+from cdek.objects.request import AddressRequestObject, OrderRequestObject, ItemRequestObject, PackageRequestObject, \
+    DeliveryRequestObject, PassportRequestObject, CDEKCall, SendAddressRequestObject, CallCourierRequestObject, \
+    AddServiceRequestObject
+from cdek.objects.status import OrderStatusObject, ChangePeriodStatusObject, StatusReportObject
 from cdek.exceptions import CDEKConfigurationError
 
 
@@ -16,12 +18,21 @@ class CDEKObjectsFactoryAbastract(object):
         self._account = account
         self._password = password
 
+    def _get_secure(self, date):
+        utc_date = self._format_date(date)
+        md5_object = hashlib.md5()
+        md5_object.update(u'{}&{}'.format(utc_date, self._password))
+        return md5_object.hexdigest()
+
+    def _format_date(self, date):
+        return date.strftime(u'%Y-%m-%dT%H:%M:%S')
+
 
 class CDEKRequestDeliveryObjectsFactory(CDEKObjectsFactoryAbastract):
     def factory_address(self, street, house, flat, pvz_code=None):
         """
         Инстанциирует CDEKAddress
-        :rtype: CDEKAddress
+        :rtype: AddressRequestObject
         :param :
         :param basestring street: Улица
         :param basestring house: Дом, корпус, строение
@@ -30,13 +41,13 @@ class CDEKRequestDeliveryObjectsFactory(CDEKObjectsFactoryAbastract):
         режим доставки «до склада»
         :return:
         """
-        address = CDEKAddress(street=street, house=house, flat=flat, pvz_code=pvz_code)
+        address = AddressRequestObject(street=street, house=house, flat=flat, pvz_code=pvz_code)
         return address
 
     def factory_item(self, ware_key, cost, payment, weight, weight_brutto, amount, link, comment=None):
         """
         Инстанциирует CDEKItem
-        :rtype : CDEKItem
+        :rtype : cdek.objects.request.ItemRequestObject
         :param basestring ware_key: Идентификатор/артикул товара (Уникален в пределах упаковки Package).
         :param float|Decimal cost_ex: Объявленная стоимость товара (за единицу товара в указанной валюте, значение >=0).
         :param float|Decimal cost: Объявленная стоимость товара (за единицу товара в рублях, значение >=0) в рублях.
@@ -54,14 +65,15 @@ class CDEKRequestDeliveryObjectsFactory(CDEKObjectsFactoryAbastract):
         :param basestring  comment: Наименование товара на русском (может также содержать описание товара: размер, цвет)
         :return:
         """
-        item = CDEKItem(ware_key=ware_key, cost=cost, payment=payment, weight=weight, weight_brutto=weight_brutto,
-                        amount=amount, link=link, comment=comment)
+        item = ItemRequestObject(ware_key=ware_key, cost=cost, payment=payment, weight=weight,
+                                 weight_brutto=weight_brutto,
+                                 amount=amount, link=link, comment=comment)
         return item
 
     def factory_package(self, number, weight, items, bar_code=None, size_a=None, size_b=None, size_c=None):
         """
         Инстанциирует CDEKPackage
-        :rtype : CDEKPackage
+        :rtype : PackageRequestObject
         :param basestring number: Номер упаковки (можно использовать порядковый номер упаковки заказа), уникален в пределах заказа
         :param basestring bar_code: Штрих-код упаковки, если есть
         :param int weight: Общий вес (в граммах)
@@ -75,8 +87,8 @@ class CDEKRequestDeliveryObjectsFactory(CDEKObjectsFactoryAbastract):
         # Если bar_code не установлен то установить значение number
         if bar_code is None:
             bar_code = number
-        package = CDEKPackage(number=number, bar_code=bar_code, weight=weight, item=items, size_a=size_a,
-                              size_b=size_b, size_c=size_c)
+        package = PackageRequestObject(number=number, bar_code=bar_code, weight=weight, item=items, size_a=size_a,
+                                       size_b=size_b, size_c=size_c)
         return package
 
     def factory_order(self, number, date_invoice, recipient_name, recipient_email, phone, tariff_type_code,
@@ -85,7 +97,7 @@ class CDEKRequestDeliveryObjectsFactory(CDEKObjectsFactoryAbastract):
                       call_courier=None, add_service=None, delivery_recipient_cost=None):
         """
         Инстанциирует CDEKOrder
-        :rtype : CDEKOrder
+        :rtype : cdek.objects.request.OrderRequestObject
         :param basestring number: Номер отправления клиента (должен быть уникален в пределах акта приема-передачи)
         :param datetime.datetime date_invoice: Дата инвойса
         :param basestring recipient_name: Получатель (ФИО)
@@ -94,7 +106,7 @@ class CDEKRequestDeliveryObjectsFactory(CDEKObjectsFactoryAbastract):
         :param int tariff_type_code: Код типа тарифа (см. Приложение, таблица 1)
         :param basestring seller_name: Истинный продавец. Используется при печати инвойсов для отображения настоящего продавца
         товара, либо торгового названия
-        :param CDEKAddress address: Адрес доставки. В зависимости от режима доставки необходимо указывать либо атрибуты
+        :param AddressRequestObject address: Адрес доставки. В зависимости от режима доставки необходимо указывать либо атрибуты
         (Street, House, Flat), либо PvzCode
         :param list packages: Список упаковок
         :param int send_city_code: Код города отправителя из базы СДЭК
@@ -107,9 +119,9 @@ class CDEKRequestDeliveryObjectsFactory(CDEKObjectsFactoryAbastract):
         :return:
         """
         assert isinstance(packages, list)
-        assert isinstance(address, CDEKAddress)
+        assert isinstance(address, AddressRequestObject)
         if call_courier is not None:
-            assert isinstance(call_courier, CDEKCallCourier)
+            assert isinstance(call_courier, CallCourierRequestObject)
 
         if rec_city_code is None and rec_city_post_code is None:
             raise CDEKConfigurationError(u'rec_city_code либо rec_city_post_code должен быть указан')
@@ -118,39 +130,37 @@ class CDEKRequestDeliveryObjectsFactory(CDEKObjectsFactoryAbastract):
             raise CDEKConfigurationError(u'send_city_code либо send_city_post_code должен быть указан')
 
         date_invoice = date_invoice.isoformat()
-        passport = CDEKPassport(series=passport_series, number=passport_number)
-        order = CDEKOrder(number=number, date_invoice=date_invoice, recipient_name=recipient_name,
-                          recipient_email=recipient_email, phone=phone, tariff_type_code=tariff_type_code,
-                          seller_name=seller_name, address=address, package=packages, send_city_code=send_city_code,
-                          rec_city_code=rec_city_code, send_city_post_code=send_city_post_code,
-                          rec_city_post_code=rec_city_post_code, comment=comment, passport=passport,
-                          call_courier=call_courier, add_service=add_service,
-                          delivery_recipient_cost=delivery_recipient_cost)
+        passport = PassportRequestObject(series=passport_series, number=passport_number)
+        order = OrderRequestObject(number=number, date_invoice=date_invoice, recipient_name=recipient_name,
+                                   recipient_email=recipient_email, phone=phone, tariff_type_code=tariff_type_code,
+                                   seller_name=seller_name, address=address, package=packages,
+                                   send_city_code=send_city_code,
+                                   rec_city_code=rec_city_code, send_city_post_code=send_city_post_code,
+                                   rec_city_post_code=rec_city_post_code, comment=comment, passport=passport,
+                                   call_courier=call_courier, add_service=add_service,
+                                   delivery_recipient_cost=delivery_recipient_cost)
         return order
 
     def factory_delivery_request(self, orders, number, date):
         """
         Инстанциирует CDEKDeliveryRequest
-        :rtype : CDEKDeliveryRequest
+        :rtype : cdek.objects.request.DeliveryRequestObject
         :param list orders:
         :param bool foreign_delivery: Признак международной доставки
         :param basestring number: Номер акта приема-передачи/ТТН
         :param datetime.datetime date: Дата документа (дата заказа)
         :return:
         """
-        date = date.isoformat()
         assert isinstance(orders, list)
-        md5_object = hashlib.md5()
-        md5_object.update(u'{}&{}'.format(date, self._password))
-        secure = md5_object.hexdigest()
-        delivery_request = CDEKDeliveryRequest(order=orders, number=number, date=date, account=self._account,
-                                               secure=secure, order_count=len(orders))
+        secure = self._get_secure(date)
+        delivery_request = DeliveryRequestObject(order=orders, number=number, date=date.isoformat(),
+                                                 account=self._account, secure=secure, order_count=len(orders))
         return delivery_request
 
     def factory_call(self, date, time_beg, time_end, send_city_code, lunch_beg=None, lunch_end=None):
         """
         Инстанциирует CDEKCall
-        :rtype : CDEKCall
+        :rtype : cdek.objects.request.CDEKCall
         :param datetime.date date: Дата ожидания курьера
         :param datetime.time time_beg: Время начала ожидания курьера
         :param datetime.time time_end: Время окончания ожидания курьера
@@ -166,7 +176,7 @@ class CDEKRequestDeliveryObjectsFactory(CDEKObjectsFactoryAbastract):
     def factory_send_address(self, street, house, flat, send_phone, sender_name, comment=None):
         """
         Инстанциирует CDEKSendAddress
-        :rtype : CDEKSendAddress
+        :rtype : SendAddressRequestObject
         :param basestring street:Улица
         :param basestring house:Дом, корпус, строение
         :param basestring flat:Квартира/Офис
@@ -175,21 +185,22 @@ class CDEKRequestDeliveryObjectsFactory(CDEKObjectsFactoryAbastract):
         :param basestring comment:Комментарий
         :return:
         """
-        address = CDEKSendAddress(street=street, house=house, flat=flat, send_phone=send_phone, sender_name=sender_name,
-                                  comment=comment)
+        address = SendAddressRequestObject(street=street, house=house, flat=flat, send_phone=send_phone,
+                                           sender_name=sender_name,
+                                           comment=comment)
         return address
 
     def factory_call_courier(self, call, send_address):
         """
         Инстанциирует CDEKCallCourier
-        :rtype : CDEKCallCourier
+        :rtype : cdek.objects.request.CDEKCallCourier
         :param CDEKCall call:
         :param CDEKSendAddress send_address:
         :return:
         """
         assert isinstance(call, CDEKCall)
-        assert isinstance(send_address, CDEKSendAddress)
-        call_courier = CDEKCallCourier(call=call, send_address=send_address)
+        assert isinstance(send_address, SendAddressRequestObject)
+        call_courier = CallCourierRequestObject(call=call, send_address=send_address)
         return call_courier
 
     def factory_add_service(self, service_codes):
@@ -199,5 +210,43 @@ class CDEKRequestDeliveryObjectsFactory(CDEKObjectsFactoryAbastract):
         :return:
         """
         assert isinstance(service_codes, (list, tuple, set))
-        add_service = CDEKAddService(service_code=service_codes)
+        add_service = AddServiceRequestObject(service_code=service_codes)
         return add_service
+
+
+class CDEKStatusReportObjectsFactory(CDEKObjectsFactoryAbastract):
+    def factory_order(self, dispatch_number=None, number=None, date=None):
+        """
+        Инстанциирует OrderStatusObject
+        :param dispatch_number:
+        :param number:
+        :param date:
+        :return:
+        """
+        if date:
+            date = date.isoformat()
+        assert (dispatch_number or (number and date))
+        return OrderStatusObject(dispatch_number=dispatch_number, number=number, date=date)
+
+    def factory_change_period(self, date_first, date_last=None):
+        """
+        Инстанциирует ChangePeriodStatusObject
+        :param date_first:
+        :param date_last:
+        :return:
+        """
+        assert date_first
+        return ChangePeriodStatusObject(date_first=date_first, date_last=date_last)
+
+    def factory_status_report(self, date, order=None, change_period=None, show_history=False):
+        """
+        Инстанциирует ReportStatusObject
+        :param date:
+        :param order:
+        :param change_period:
+        :return:
+        """
+        assert order or change_period
+        secure = self._get_secure(date)
+        return StatusReportObject(change_period=change_period, order=order, date=self._format_date(date),
+                                  account=self._account, secure=secure, show_history=show_history)
