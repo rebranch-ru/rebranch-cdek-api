@@ -5,7 +5,7 @@ from setuptools import setup
 
 setup(
     name='rebranch-cdek-api',
-    version=0.1,
+    version=0.2,
     long_description=open(join(dirname(__file__), 'README.md')).read(),
     author='Rebranch',
     package_data={},
