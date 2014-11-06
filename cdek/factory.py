@@ -25,11 +25,7 @@ class CDEKObjectsFactoryAbastract(object):
         return md5_object.hexdigest()
 
     def _format_date(self, date):
-<<<<<<< HEAD
         return date.strftime(u'%Y-%m-%d')
-=======
-        return date.strftime(u'%Y-%m-%dT%H:%M:%S')
->>>>>>> 521d9a3650be6e7bef9a62de5adf3ef2bdd3cad3
 
 
 class CDEKRequestDeliveryObjectsFactory(CDEKObjectsFactoryAbastract):
@@ -242,11 +238,7 @@ class CDEKStatusReportObjectsFactory(CDEKObjectsFactoryAbastract):
         assert date_first
         return ChangePeriodStatusObject(date_first=date_first, date_last=date_last)
 
-<<<<<<< HEAD
     def factory_status_report(self, date, orders=None, change_period=None, show_history=False):
-=======
-    def factory_status_report(self, date, order=None, change_period=None, show_history=False):
->>>>>>> 521d9a3650be6e7bef9a62de5adf3ef2bdd3cad3
         """
         Инстанциирует ReportStatusObject
         :param date:
@@ -254,13 +246,7 @@ class CDEKStatusReportObjectsFactory(CDEKObjectsFactoryAbastract):
         :param change_period:
         :return:
         """
-<<<<<<< HEAD
         assert orders or change_period
         secure = self._get_secure(date)
         return StatusReportObject(change_period=change_period, order=orders, date=self._format_date(date),
-=======
-        assert order or change_period
-        secure = self._get_secure(date)
-        return StatusReportObject(change_period=change_period, order=order, date=self._format_date(date),
->>>>>>> 521d9a3650be6e7bef9a62de5adf3ef2bdd3cad3
                                   account=self._account, secure=secure, show_history=show_history)
