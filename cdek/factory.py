@@ -153,7 +153,7 @@ class CDEKRequestDeliveryObjectsFactory(CDEKObjectsFactoryAbastract):
         """
         assert isinstance(orders, list)
         secure = self._get_secure(date)
-        delivery_request = DeliveryRequestObject(order=orders, number=number, date=date.isoformat(),
+        delivery_request = DeliveryRequestObject(order=orders, number=number, date=self._format_date(date),
                                                  account=self._account, secure=secure, order_count=len(orders))
         return delivery_request
 
